@@ -41,6 +41,6 @@ jobs:
       - name: Commit and Push Changes
         run: |
           git config --global user.name "tuhinxbd"
-          git config --global user.email "20234208032@eee.bubt.edu.bd"
+          git config --global user.email "refat765public@gmail.com"
           git add students/exam/ api_index.json
           git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Auto-update routine data [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})
