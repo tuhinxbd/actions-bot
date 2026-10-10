@@ -1,0 +1,91 @@
+name: Master BUBT Automation Runner (Remote)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action_type:
+        description: 'Select automation task to execute'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'faculty'
+          - 'exams'
+          - 'courses'
+          - 'seasonal_reset'
+
+jobs:
+  execute-task:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Private BUBT Server Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.TARGET_REPO || 'tuhinx/bubt-server' }}
+          token: ${{ secrets.GH_PAT }}
+          ref: ${{ vars.TARGET_BRANCH || 'master' }}
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+          pip install playwright requests beautifulsoup4 pdfplumber schedule
+
+      - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: playwright install --with-deps chromium
+
+      - name: Install Playwright Dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: playwright install-deps chromium
+
+      - name: Run Selected Task
+        run: |
+          ACTION="${{ github.event.inputs.action_type }}"
+          echo "Executing task: $ACTION"
+          
+          if [ "$ACTION" = "faculty" ] || [ "$ACTION" = "all" ]; then
+            echo ">>> Running Faculty Scraper..."
+            python teachers/scripts/faculty.py
+          fi
+          
+          if [ "$ACTION" = "courses" ] || [ "$ACTION" = "all" ]; then
+            echo ">>> Running Courses Scraper..."
+            python students/course/scripts/master_auto_get_courses.py
+          fi
+          
+          if [ "$ACTION" = "exams" ] || [ "$ACTION" = "all" ]; then
+            echo ">>> Running Exam Routines Automation..."
+            python students/exam/master_automation.py
+          fi
+
+          if [ "$ACTION" = "seasonal_reset" ]; then
+            echo ">>> Running Seasonal Reset (Clean)..."
+            python .scripts/data_sniper.py --clean
+          fi
+
+          # Always re-index
+          python .scripts/data_indexer.py || true
+
+      - name: Commit and Push Changes to Private Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Executed $ACTION automation [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})

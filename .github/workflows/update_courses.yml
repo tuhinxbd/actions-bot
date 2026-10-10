@@ -1,0 +1,46 @@
+name: Auto Update BUBT Courses (Remote)
+
+on:
+  schedule:
+    # Runs at 00:00 every Sunday (UTC)
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allows manual trigger
+
+jobs:
+  update-courses:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Private BUBT Server Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.TARGET_REPO || 'tuhinx/bubt-server' }}
+          token: ${{ secrets.GH_PAT }}
+          ref: ${{ vars.TARGET_BRANCH || 'master' }}
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+          pip install requests beautifulsoup4
+
+      - name: Run Master Course Scraper
+        run: python students/course/scripts/master_auto_get_courses.py
+
+      - name: Update Global Data Index
+        run: python .scripts/data_indexer.py || true
+
+      - name: Commit and Push Changes to Private Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add students/course/api/*.json api_index.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Auto-update BUBT course data [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})
