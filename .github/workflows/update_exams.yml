@@ -1,4 +1,4 @@
-name: Auto Update Exam Routines (Remote)
+name: Sync Routine Data
 
 on:
   schedule:
@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Private BUBT Server Repository
+      - name: Checkout Target Repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.TARGET_REPO || 'tuhinx/bubt-server' }}
+          repository: ${{ secrets.TARGET_REPO }}
           token: ${{ secrets.GH_PAT }}
           ref: ${{ vars.TARGET_BRANCH || 'master' }}
           fetch-depth: 1
@@ -47,15 +47,15 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: playwright install-deps chromium
 
-      - name: Run Exam Master Automation
+      - name: Run Routine Automation
         run: python students/exam/master_automation.py
 
-      - name: Update Global Data Index
+      - name: Update Index
         run: python .scripts/data_indexer.py || true
 
-      - name: Commit and Push Changes to Private Repo
+      - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add students/exam/ api_index.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Auto-update BUBT exam routines [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Auto-update routine data [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})

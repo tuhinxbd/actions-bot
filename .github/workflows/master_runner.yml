@@ -1,10 +1,10 @@
-name: Master BUBT Automation Runner (Remote)
+name: Master Data Pipeline
 
 on:
   workflow_dispatch:
     inputs:
       action_type:
-        description: 'Select automation task to execute'
+        description: 'Select pipeline task to execute'
         required: true
         default: 'all'
         type: choice
@@ -20,10 +20,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Private BUBT Server Repository
+      - name: Checkout Target Repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.TARGET_REPO || 'tuhinx/bubt-server' }}
+          repository: ${{ secrets.TARGET_REPO }}
           token: ${{ secrets.GH_PAT }}
           ref: ${{ vars.TARGET_BRANCH || 'master' }}
           fetch-depth: 1
@@ -58,34 +58,33 @@ jobs:
       - name: Run Selected Task
         run: |
           ACTION="${{ github.event.inputs.action_type }}"
-          echo "Executing task: $ACTION"
+          echo "Executing pipeline task: $ACTION"
           
           if [ "$ACTION" = "faculty" ] || [ "$ACTION" = "all" ]; then
-            echo ">>> Running Faculty Scraper..."
+            echo ">>> Running Faculty Data Pipeline..."
             python teachers/scripts/faculty.py
           fi
           
           if [ "$ACTION" = "courses" ] || [ "$ACTION" = "all" ]; then
-            echo ">>> Running Courses Scraper..."
+            echo ">>> Running Academic Data Pipeline..."
             python students/course/scripts/master_auto_get_courses.py
           fi
           
           if [ "$ACTION" = "exams" ] || [ "$ACTION" = "all" ]; then
-            echo ">>> Running Exam Routines Automation..."
+            echo ">>> Running Routine Data Pipeline..."
             python students/exam/master_automation.py
           fi
 
           if [ "$ACTION" = "seasonal_reset" ]; then
-            echo ">>> Running Seasonal Reset (Clean)..."
+            echo ">>> Running Seasonal Reset Pipeline..."
             python .scripts/data_sniper.py --clean
           fi
 
-          # Always re-index
           python .scripts/data_indexer.py || true
 
-      - name: Commit and Push Changes to Private Repo
+      - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add --all
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Executed $ACTION automation [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [Bot] Executed $ACTION pipeline [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})
