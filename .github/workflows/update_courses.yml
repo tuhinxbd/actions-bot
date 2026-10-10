@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Target Repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ secrets.TARGET_REPO }}
+          repository: ${{ secrets.TARGET_REPO || 'tuhinxbd/bubt-server' }}
           token: ${{ secrets.GH_PAT }}
           ref: ${{ vars.TARGET_BRANCH || 'master' }}
           fetch-depth: 1
@@ -24,13 +24,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
           pip install requests beautifulsoup4
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run Academic Scraper
         run: python students/course/scripts/master_auto_get_courses.py

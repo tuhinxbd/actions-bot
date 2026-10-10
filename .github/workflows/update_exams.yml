@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Target Repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ secrets.TARGET_REPO }}
+          repository: ${{ secrets.TARGET_REPO || 'tuhinxbd/bubt-server' }}
           token: ${{ secrets.GH_PAT }}
           ref: ${{ vars.TARGET_BRANCH || 'master' }}
           fetch-depth: 1
@@ -24,28 +24,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
-
-      - name: Cache Playwright Browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
           pip install playwright requests beautifulsoup4 pdfplumber
-
-      - name: Install Playwright Browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: playwright install --with-deps chromium
-
-      - name: Install Playwright Dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: playwright install-deps chromium
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          playwright install --with-deps chromium
 
       - name: Run Routine Automation
         run: python students/exam/master_automation.py
