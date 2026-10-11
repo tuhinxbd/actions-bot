@@ -1,9 +1,6 @@
 name: Sync Routine Data
 
 on:
-  schedule:
-    # Runs at 01:00 UTC every day
-    - cron: '0 1 * * *'
   workflow_dispatch:
     # Allows manual trigger
 
