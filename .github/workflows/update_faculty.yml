@@ -36,7 +36,7 @@ jobs:
 
       - name: Commit and Push Changes
         run: |
-          git config --global user.name "tuhinxbd"
-          git config --global user.email "refat765public@gmail.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add teachers/output/ api_index.json
           git diff --quiet && git diff --staged --quiet || (git commit -m "[Bot] Auto-update faculty data [$(date +'%Y-%m-%d')]" && git push origin HEAD:${{ vars.TARGET_BRANCH || 'master' }})
